@@ -25,12 +25,12 @@ public class Factory {
 		}
 		//Guardo una instancia de objectClass
 		System.out.println("-Inyectando dependencias");
-		object = inyectDependencies(object);//Inyectamos dependencias a la instancia
+		object = injector(object);//Inyectamos dependencias a la instancia
 		System.out.println("---Objeto '" + objectClass.getSimpleName() + "' instanciado con exito!");
 		return object;
 	}
 	
-	private static <T> T inyectDependencies(T parentObject){
+	private static <T> T injector(T parentObject){
 		//Lista de propiedades
 		Field[] campos = parentObject.getClass().getDeclaredFields();
 
@@ -49,7 +49,8 @@ public class Factory {
             	//La clase tiene @Component?
             	if(isComponent(fieldClass)) {
             		System.out.println("--Inyectando el campo '" + campo.getName() + "'");
-            		
+
+            		// estaria bueno hacer esto con un strategy
             		//TODO los set son HashSet. Deberian poder ser LinkedHashSet o TreeSet? | Implement para lists
             		if(fieldIsCollection(campo) && injected.count() >= 1 ) {//Si tiene count >= 1 y es una coleccion
             			System.out.println("--El campo '" + campo.getName() + "' es una Collection. Se van a instanciar " + injected.count() + " elementos del tipo '" + fieldClass.getSimpleName() + "'");
