@@ -1,8 +1,7 @@
 package test.demo;
 
-import frm.myspring.Component;
+import org.utn.alg2.grp3.anotations.Injected;
 
-@Component
 public class RingoStarr implements Baterista
 {
    @Override

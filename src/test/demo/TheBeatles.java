@@ -1,9 +1,7 @@
 package test.demo;
 
-import frm.myspring.Component;
-import frm.myspring.Injected;
+import org.utn.alg2.grp3.anotations.Injected;
 
-@Component
 public class TheBeatles implements Banda
 {
    @Injected(implementation=GeorgeHarrison.class)
