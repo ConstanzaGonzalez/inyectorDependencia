@@ -31,7 +31,6 @@ public class TheBeatles implements Banda
    {
       return primeraGuitarra;
    }
-
    public void setPrimeraGuitarra(Guitarrista primeraGuitarra)
    {
       this.primeraGuitarra=primeraGuitarra;
@@ -41,7 +40,6 @@ public class TheBeatles implements Banda
    {
       return segundaGuitarra;
    }
-
    public void setSegundaGuitarra(Guitarrista segundaGuitarra)
    {
       this.segundaGuitarra=segundaGuitarra;
@@ -51,7 +49,6 @@ public class TheBeatles implements Banda
    {
       return bajista;
    }
-
    public void setBajista(Bajista bajista)
    {
       this.bajista=bajista;
@@ -61,13 +58,9 @@ public class TheBeatles implements Banda
    {
       return baterista;
    }
-
    public void setBaterista(Baterista baterista)
    {
       this.baterista=baterista;
    }
-   
-   
-   
-}
 
+}
