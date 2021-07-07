@@ -54,12 +54,23 @@ public class Factory {
                 if (Collection.class.isAssignableFrom(fieldClazz)) {
                     Collection<Object> fieldValue = implementEmptyCollection(field);
 
-                    Class<?> fieldClazzz = (Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
-                    fieldClazzz = implementClazzOfInterface(fieldClazzz, injected);
-                    logger.info("injecting " + injected.count() +" of class " + fieldClazzz.getName() + " --> " + field.getName());
+                    Class<?> implementationClazz = (Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
+                    fieldClazz = implementClazzOfInterface(implementationClazz, injected);
+                    logger.info("injecting " + injected.count() +" of class " + fieldClazz.getName() + " --> " + field.getName());
 
                     for (int i = 0; i < injected.count(); i++) {
-                        fieldValue.add(build(fieldClazzz));
+                        fieldValue.add(build(fieldClazz));
+                    }
+                    setFieldClazz(object, field, fieldValue);
+
+                } else if (fieldClazz.isArray()) {
+                    Object[] fieldValue = (Object[]) Array.newInstance(field.getType().getComponentType(), injected.count());
+                    Class<?> implementationClazz = ((Class) field.getGenericType()).getComponentType();
+                    fieldClazz = implementClazzOfInterface(implementationClazz, injected);
+                    logger.info("injecting " + injected.count() +" of class " + fieldClazz.getName() + " --> " + field.getName());
+
+                    for(int i = 0; i < injected.count(); i++) {
+                        fieldValue[i] = build(fieldClazz);
                     }
                     setFieldClazz(object, field, fieldValue);
 

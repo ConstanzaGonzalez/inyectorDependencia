@@ -11,7 +11,8 @@ public class FordFiesta implements Auto
 	private Motor motor;
 		
 	@Injected(implementation=BujiaBosh.class, count=5)
-	private List<Bujia> bujias;
+//	private List<Bujia> bujias;
+	private Bujia bujias[];
 
 	@Override
 	public void acelerar()
