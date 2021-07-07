@@ -23,18 +23,17 @@ public class Factory {
             e.printStackTrace();
         }
         T object = build(clazz);
-        logger.info("build success '" + callerClazzName + "'");
+        logger.info("build success " + callerClazzName);
 
         return object;
     }
-
 
     /**
      * Realiza la inyeccion de los fields que tienen @Injected en object
      * @param object que se tienen que inyectar
      * @return no necesita devolver un objeto porque se inyecta todo por reflection
      */
-    private static <T> void inject(T object){
+    private static <T> void inject(T object) {
         //obtiene fileds por reflection
         Field[] fields = object.getClass().getDeclaredFields();
 
@@ -42,51 +41,94 @@ public class Factory {
 
             Injected injected = field.getAnnotation(Injected.class);
             if (injected != null) {
-                Class<?> fieldClazz = getFieldClazz(field);
-                logger.info("injecting '" + injected.implementation() + " --> " + field.getName() + "'");
+                Class<?> fieldClazz = field.getType();
+                logger.info("injecting " + injected.implementation() + " --> " + field.getName());
 
                 // TODO chequear injection ciclica
-                Object fieldValue = build(fieldClazz);
-                setFieldClazz(object, field, fieldValue);
+                // Caso particular de recursividad que no se auto-inyecte
+                if( field.getType() == object.getClass() ) {
+                    throw new RuntimeException("Cyclic Class injection");
+                }
+
+                // estaria bueno hacer esto con un strategy
+                if (Collection.class.isAssignableFrom(fieldClazz)) {
+                    Collection<Object> fieldValue = implementEmptyCollection(field);
+
+                    Class<?> fieldClazzz = (Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0];
+                    fieldClazzz = implementClazzOfInterface(fieldClazzz, injected);
+                    logger.info("injecting " + injected.count() +" of class " + fieldClazzz.getName() + " --> " + field.getName());
+
+                    for (int i = 0; i < injected.count(); i++) {
+                        fieldValue.add(build(fieldClazzz));
+                    }
+                    setFieldClazz(object, field, fieldValue);
+
+                } else {
+                    if(field.getType().isInterface()) {
+                        fieldClazz = implementClazzOfInterface(fieldClazz, injected);
+                    }
+                    setFieldClazz(object, field, build(fieldClazz));
+                }
             }
         }
     }
 
-    private static Class<?> getImplementationClazz(Class<?> interfaceClazz, Injected injected) throws Exception {
-        Reflections reflections = new Reflections(interfaceClazz.getPackage().getName());
-        Set<?> implementations = reflections.getSubTypesOf(interfaceClazz); //Todas las clases que implementan la interface
-        //System.out.println("---Implementaciones de la interface '" + interfaceClazz.getSimpleName() + "': " + implementations );
+    /**
+     * Realiza la implementacion de una Collection
+     * @param field
+     * @return
+     */
+    private static Collection<Object> implementEmptyCollection(Field field) {
+        Class<?> clazz = field.getType();
 
-        Class<?> implementationClass = null;//Implementacion a usar. Clase que se va a instanciar en el campo
-        //TODO tirar warning si se manda implementation que no existe (exception si existe mas de una)
-        //Si existe solo una implementacion usamos esa
-        if(implementations.size() == 1)
-            implementationClass = (Class<?>) implementations.iterator().next();//Primer item en el set
-            //Si existen varias implementaciones, y se paso alguna clase por injected, usamos esa
-        else if( implementations.size() > 1 && injected.implementation() != Class.class ) {
-            if(implementations.contains(injected.implementation())) {
-                implementationClass = injected.implementation();
-            } else {
-                throw new Exception("Error implemantation");
+        // implementaciones por default si el field es una interfaz de la herencia Collection
+        if (field.getType().isInterface()) {
+            if (List.class.isAssignableFrom(field.getType())) {
+                clazz = ArrayList.class;
+            } else if (Set.class.isAssignableFrom(field.getType())) {
+                clazz = HashSet.class;
             }
         }
-        //System.out.println("---La clase a implementar es '" + implementationClass.getSimpleName() + "'");
 
-        return implementationClass;
+        try {
+            return (Collection<Object>) clazz.getConstructor().newInstance(new Object[] {});
+        } catch (Exception e) {
+            throw new RuntimeException("Error building a Collection", e);
+        } finally {
+            logger.info("build success Collection " + clazz.getName());
+        }
+
     }
 
-    private static Class<?> getFieldClazz(Field field) {
-        Class<?> fieldClazz = field.getType();
+    /**
+     * Encuentra la implementacion de una interfaz que puede ser de un Annotation o automatica
+     * @param interfaceClazz interfaz del field
+     * @param injected annotation del field
+     * @return
+     */
+    public static Class<?> implementClazzOfInterface(Class<?> interfaceClazz, Injected injected) {
+        // implementation del Annotation
+        Class<?> clazz = injected.implementation();
 
-        if(fieldClazz.isInterface() ) {
-            try {
-                fieldClazz = getImplementationClazz(fieldClazz, field.getAnnotation(Injected.class));
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, "problems injecting member '" + field.getName() + "'", e);
+        // viene or default Object.class como implementation en la Annotation
+        if (injected.implementation() == Object.class) {
+            Reflections reflections = new Reflections(interfaceClazz.getPackage().getName());
+            // se obtiene implementaciones de la interfaz
+            Set<?> implementations = reflections.getSubTypesOf(interfaceClazz);
+
+            if (implementations.size() == 1)
+                clazz = (Class<?>) implementations.iterator().next();
+
+            else if (implementations.size() > 1) {
+                if (implementations.contains(injected.implementation())) {
+                    clazz = injected.implementation();
+                } else {
+                    throw new RuntimeException("Error too many implementations of " + interfaceClazz.getName());
+                }
             }
         }
 
-        return fieldClazz;
+        return clazz;
     }
 
     /**
@@ -101,12 +143,10 @@ public class Factory {
         try {
             field.set(object, value);
         } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new RuntimeException("Error injecting field " + field.getName() + " with " + value.getClass().getName(), e);
         }
         field.setAccessible(false);
     }
-
 
     /**
      * Construye un objeto y al final inyecta las dependencias
@@ -114,17 +154,17 @@ public class Factory {
      * @return devuelve un objeto de tipo <T> inyectado
      */
     private static <T> T build(Class<T> clazz) {
-        logger.info("building '" + clazz.getSimpleName() + "'");
+        logger.info("building " + clazz.getName() + "");
         T object = null;
         try {
             object = clazz.getConstructor().newInstance(new Object[] {});
         } catch (Exception e) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new RuntimeException("Error building Class: " + clazz.getName());
         }
 
         inject(object);
-        logger.info("build success '" + clazz.getSimpleName() + "'");
+        logger.info("build success " + clazz.getName());
         return object;
     }
 
@@ -142,4 +182,5 @@ public class Factory {
         }
         return null;
     }
+
 }
