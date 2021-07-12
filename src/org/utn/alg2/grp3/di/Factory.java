@@ -1,6 +1,7 @@
 package org.utn.alg2.grp3.di;
 
 import org.reflections.Reflections;
+import org.utn.alg2.grp3.anotations.ComponentScan;
 import org.utn.alg2.grp3.anotations.Injected;
 
 import java.lang.reflect.*;
@@ -13,15 +14,17 @@ public class Factory {
 
     static Logger logger = Logger.getLogger(Factory.class.getName());
 
-    private static String packageScan = "test.demo";
+    private static String packageScan = "";
 
     public static <T> T getObject(Class<T> clazz) {
         String callerClazzName = getCallerClazzName(Factory.class);
         try {
-            Class.forName(callerClazzName);
+            Class<?> caller = Class.forName(callerClazzName);
+            Factory.packageScan = caller.getAnnotation(ComponentScan.class).value();
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
+
         T object = build(clazz);
         logger.info("build success " + callerClazzName);
 
@@ -153,18 +156,21 @@ public class Factory {
      * @return devuelve un objeto de tipo <T> inyectado
      */
     private static <T> T build(Class<T> clazz) {
-        logger.info("building " + clazz.getName() + "");
-        T object = null;
-        try {
-            object = clazz.getConstructor().newInstance(new Object[] {});
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            throw new RuntimeException("Error building Class: " + clazz.getName());
-        }
+        if (Factory.packageScan.equals(clazz.getPackage().getName())){
+            logger.info("building " + clazz.getName() + "");
+            T object = null;
+            try {
+                object = clazz.getConstructor().newInstance(new Object[]{});
+            } catch (Exception e) {
+                throw new RuntimeException("Error building Class: " + clazz.getName());
+            }
 
-        inject(object);
-        logger.info("build success " + clazz.getName());
-        return object;
+            inject(object);
+            logger.info("build success " + clazz.getName());
+            return object;
+        } else {
+            throw new RuntimeException("Class not found in Package: " + clazz.getPackage());
+        }
     }
 
     public static String getCallerClazzName(final Class<?> clazz) {

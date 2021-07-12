@@ -5,8 +5,8 @@ import org.utn.alg2.grp3.anotations.Injected;
 
 import java.util.List;
 
-public class FordFiesta implements Auto
-{
+public class FordFiesta implements Auto {
+
 	@Injected(implementation=ToyotaMotor.class)
 	private Motor motor;
 		
