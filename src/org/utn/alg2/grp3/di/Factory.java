@@ -50,7 +50,6 @@ public class Factory {
                     throw new RuntimeException("Cyclic Class injection");
                 }
 
-                // estaria bueno hacer esto con un strategy
                 if (Collection.class.isAssignableFrom(fieldClazz)) {
                     Collection<Object> fieldValue = implementEmptyCollection(field);
 
